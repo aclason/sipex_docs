@@ -56,8 +56,7 @@ setcolorder(d1, c("ID","Title", "Organization",
                   setdiff(names(d1), c("ID", "Title", "Organization"))))
 
 #seperate to make the resources doc:
-d3 <- d1[,.(ID, Title, `Document Name (title_location_year published)`)]
-
+d4 <- d1[,.(ID, Title, `Document Name (title_location_year published)`)]
 
 
 # JOIN TAGS -----------------
@@ -294,8 +293,8 @@ d1[, `Disturbance Type` := gsub("wevil", "weevil", `Disturbance Type`)]
 ################################## Time to combine tags ###################################
 ###########################################################################################
 names(d1)
-cols_to_combine <- names(d1)[!names(d1) %in% c("ID","Title", "Organization",
-                                               "All orgs", "org1", "org2", "org3","org4",
+cols_to_combine <- names(d1)[!names(d1) %in% c("ID","Title", "Organization", "Year Published",
+                                               "Author(s)","All orgs", "org1", "org2", "org3","org4",
                                                "Description")]
 d1[, Tags := do.call(paste, c(.SD, sep = ",")), .SDcols = cols_to_combine]
 
@@ -304,7 +303,7 @@ d2[, Tags := gsub(",+", ",", Tags)]  # Replace multiple commas with a single com
 d2[, Tags := gsub("^,|,$", "", Tags)]
 
 #Tags don't accept special characters, but accepts dashes, spaces, 
-#underscores and capitalization. No slashes or ampersands
+#underscores and capitalization and periods. No slashes or ampersands
 
 #first, get rid of the parentheses, but also anything inside the paraentheses:
 d2[, Tags := gsub("\\(.*?\\)", "", Tags)]
@@ -312,8 +311,12 @@ d2[, Tags := gsub("\\(.*?\\)", "", Tags)]
 #get rid of other special characters
 special_chars <- unique(unlist(strsplit(paste(d2$Tags, collapse = ""), "")))
 special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
-chars_to_remove <- "[/&.?]"
+chars_to_remove <- "[/&?]"
 d2[, Tags := gsub(chars_to_remove, " ", Tags)]
+#apostrophe's with no spaces:
+chars_to_remove <- "['’]"
+d2[, Tags := gsub(chars_to_remove, "", Tags)]
+
 
 #clean up the commas and spaces
 d2[, Tags := gsub("NA", "", Tags)] # Remove "NA" 
@@ -353,24 +356,124 @@ d2$Group
 #add a License column:
 d2[, License:="Open Data Commons Attribution License"]
 
-d1[,.(org1)]
+# fix organizations -----------------------------------------------------
+# write out the orgs to figure out which is the one to categorize under
+#fwrite(d2[,.(ID, Title, d1[,.(`All orgs`,org1,org2,org3,org4, Organization )])],
+ #      file.path(out_dir, "datasets_140425_org_and_confirm.csv"))
+
+#read in edited organizations: - also fixed a few titles
+o1 <- fread(file.path(out_dir, "datasets_140425_org_and_confirm.csv"))
+o2 <- o1[Alana_confirm_include == "Yes"]
+
+d3 <- merge(o2[,.(ID,Title,Organization,Org1,Org2)], 
+            d2[,.(ID,Tags,Group,License)], by = "ID", all.x = TRUE)
+d3 <- merge(d1[,.(ID,`Author(s)`,`Year Published`,Description)], d3, by = "ID") #bring back descriptions
+setnames(d3, "Author(s)", "Authors")
+
+
+#clean up descriptions - assuming th same rules as tags: ---------------------
+
+#Tags don't accept special characters, but accepts dashes, spaces, 
+#underscores and capitalization. No slashes or ampersands
+d3[, Description := gsub("\\(.*?\\)", "", Description)]
+
+#get rid of other special characters
+special_chars <- unique(unlist(strsplit(paste(d3$Description, collapse = ""), "")))
+special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
+chars_to_remove <- "[/&?\"']"
+d3[, Description := gsub(chars_to_remove, "", Description)]
+
+#clean up the commas and spaces
+#d3[, Description := gsub("NA", "", Description)] # Remove "NA" 
+#d3[, Description := gsub(",\\s*NA\\s*,", ",", Description)] # Remove "NA" surrounded by commas
+d3[, Description := gsub("\\s*,\\s*", ", ", Description)]   # Ensure a single space after each comma
+#d3[, Description := gsub("\\s*,", ",", Description)]        # Remove any spaces before a comma
+#d3[, Description := gsub("\\s+$", "", Description)]         # Remove trailing spaces
+
+
+
+
+#clean up Authors ----------------------
+
+#Tags don't accept special characters, but accepts dashes, spaces, 
+#underscores and capitalization. No slashes or ampersands
+d3[, Authors := gsub("\\(.*?\\)", "", Authors)]
+
+#get rid of other special characters
+special_chars <- unique(unlist(strsplit(paste(d3$Authors, collapse = ""), "")))
+special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
+#apostrophe's with no spaces:
+chars_to_remove <- "['’]"
+d3[, Authors := gsub(chars_to_remove, "", Authors)]
+
+#clean up the commas and spaces
+#d3[, Description := gsub("NA", "", Description)] # Remove "NA" 
+#d3[, Description := gsub(",\\s*NA\\s*,", ",", Description)] # Remove "NA" surrounded by commas
+d3[, Authors := gsub("\\s*,\\s*", ", ", Authors)]   # Ensure a single space after each comma
+#d3[, Description := gsub("\\s*,", ",", Description)]        # Remove any spaces before a comma
+#d3[, Description := gsub("\\s+$", "", Description)]         # Remove trailing spaces
+
+
+
+#put the extra orgs into the tags:
+cols_to_combine <- c("Org1","Org2","Tags")
+d3[, Tags := do.call(paste, c(.SD, sep = ",")), .SDcols = cols_to_combine]
+d3[, Tags := gsub(",+", ",", Tags)]  # Replace multiple commas with a single comma
+d3[, Tags := gsub("^,", "", Tags)]
+special_chars <- unique(unlist(strsplit(paste(d3$Tags, collapse = ""), "")))
+special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
+chars_to_remove <- "&"
+d3[, Tags := gsub(chars_to_remove, " ", Tags)]
+chars_to_remove <- "[()]"
+d3[, Tags := gsub(chars_to_remove, "", Tags)]
+
 
 #reorder:
-d2 <- d2[,.(ID,Title,Organization, Tags, License, Group)]
+d3 <- d3[,.(ID,Title,Organization,Authors, `Year Published`,Tags, Description, License, Group)]
 
-#print out 20 resources
-fwrite(d2[20:40], file.path(out_dir,"datasets_010425.csv"))
+#print out 20 resources (put resources 20-22 on the production server)
+fwrite(d3[23:50], file.path("C:/Github/sipex_upload/datasets data",
+                            "datasets_140425_b2.csv"))
 
 #create the resource doc:
-#need to watch the ids - as we are making them twice.
-d3 <- d3[,.(Dataset_ID = ID, Name = Title, 
+#need to watch the ids - i don't think we need to shrink this, as it should call the resource by ID.
+d4 <- d4[,.(Dataset_ID = ID, Name = Title, 
       Path = `Document Name (title_location_year published)`)]
+d4 <- d4[Dataset_ID %in% d3$ID]
 
 #append the file type to the end of each path - for now it's pdf, would
 # need to update this in the future depending on file types
-d3[,Path := paste0(Path,".pdf")]
+d4[,Path := paste0(Path,".pdf")]
 
-fwrite(d3[20:40], file.path(out_dir,"resources_010425.csv"), append = FALSE)
+fwrite(d4[23:50], file.path("C:/Github/sipex_upload/resources data",
+                            "resources_140425_b2.csv"), append = FALSE)
+
+
+fwrite(d3[1:22], file.path("C:/Github/sipex_upload/datasets data",
+                            "datasets_140425_b1.csv"))
+fwrite(d4[1:22], file.path("C:/Github/sipex_upload/resources data",
+                            "resources_140425_b1.csv"), append = FALSE)
+fwrite(d3[23:50], file.path("C:/Github/sipex_upload/datasets data",
+                            "datasets_140425_b2.csv"))
+fwrite(d4[23:50], file.path("C:/Github/sipex_upload/resources data",
+                            "resources_140425_b2.csv"), append = FALSE)
+fwrite(d3[51:75], file.path("C:/Github/sipex_upload/datasets data",
+                           "datasets_140425_b3.csv"))
+fwrite(d4[51:75], file.path("C:/Github/sipex_upload/resources data",
+                           "resources_140425_b3.csv"), append = FALSE)
+fwrite(d3[76:100], file.path("C:/Github/sipex_upload/datasets data",
+                            "datasets_140425_b4.csv"))
+fwrite(d4[76:100], file.path("C:/Github/sipex_upload/resources data",
+                            "resources_140425_b4.csv"), append = FALSE)
+fwrite(d3[101:115], file.path("C:/Github/sipex_upload/datasets data",
+                             "datasets_140425_b5.csv"))
+fwrite(d4[101:115], file.path("C:/Github/sipex_upload/resources data",
+                             "resources_140425_b5.csv"), append = FALSE)
+
+
+
+
+
 
 
 
