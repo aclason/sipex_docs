@@ -36,7 +36,8 @@ chars_to_remove <- "[:,\'/?\r–.&*—_;]"
 
 d1[, Title := gsub(chars_to_remove, " ", Title)]
 d1[, Title := gsub("\\s+", " ", trimws(Title))]
-d1[, ID := seq(1,nrow(d1))]
+#d1[, ID := seq(1,nrow(d1))]
+setnames(d1, "doc_ID", "ID")
 d1$Title
 
 #check for duplicates in the Organization and create new tags for all but one organization
