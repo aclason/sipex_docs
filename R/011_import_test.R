@@ -8,9 +8,8 @@ out_dir <- "processed"
 #No slashes or ampersands
 # License - refer to this for specific names and descriptions https://opendefinition.org/licenses/
 # Groups/Categories - these are already added so the value for this is the slug/url 
-#of the categories e.g. Variable Retention = variable-retention
+#of the categories
 # comma separated for multiple categories
-# resource file name shouldn't have any special characters but accepts spaces, dashes and underscores
 
 
 #d1 <- fread(file.path(in_dir,"Document Collection and Tagging-140425.csv"))
@@ -84,7 +83,8 @@ cols_to_combine <- names(d1)[!names(d1) %in% c("ID","Title", "Upload to SIPex?",
                                                "Notes about Copyright")] #not sure
 d1[, Tags := do.call(paste, c(.SD, sep = ",")), .SDcols = cols_to_combine]
 
-d2 <- d1[,.(ID,Title, Tags,`Descriptive location`,Group,License)]
+d2 <- d1[,.(ID,Title,Organization, `Author(s)`, Tags,`Descriptive location`,
+            Group, License, Description)]
 d2[, Tags := gsub(",+", ",", Tags)]  # Replace multiple commas with a single comma
 d2[, Tags := gsub("^,|,$", "", Tags)]
 #Tags don't accept special characters, but accepts dashes, spaces, 
@@ -111,25 +111,36 @@ d2[, Tags := gsub("\\s*,", ",", Tags)]        # Remove any spaces before a comma
 d2[, Tags := gsub("\\s+$", "", Tags)]         # Remove trailing spaces
 d2[, Tags := gsub(",+", ",", Tags)]  # Replace multiple commas with a single comma
 d2[, Tags := gsub('["“”‘’]', '', Tags)]
+d2[, Tags := gsub(",\\s*$", "", Tags)] 
 #might need to get rid of parentheses in Organization - not sure yet
 #now pull out groups and add to a new column:
 
 #Clean up descriptions:
-d1[,.(ID,`Author(s)`,`Year Published`,Description)]
-d3[, Description := gsub("\\(.*?\\)", "", Description)]
+#d3 <- d1[,.(ID,Title, Organization,`Author(s)`,`Year Published`,
+ #           License, Group, Description)]
+
+d2[, Description := gsub("\\(.*?\\)", "", Description)]
 
 #get rid of other special characters
 special_chars <- unique(unlist(strsplit(paste(d3$Description, collapse = ""), "")))
 special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
-chars_to_remove <- "[/&?\"']"
-d3[, Description := gsub(chars_to_remove, "", Description)]
+chars_to_remove <- "[/&?\"]"
+d2[, Description := gsub(chars_to_remove, "", Description)]
 
 #clean up the commas and spaces
 #d3[, Description := gsub("NA", "", Description)] # Remove "NA" 
 #d3[, Description := gsub(",\\s*NA\\s*,", ",", Description)] # Remove "NA" surrounded by commas
-d3[, Description := gsub("\\s*,\\s*", ", ", Description)]   # Ensure a single space after each comma
+d2[, Description := gsub("\\s*,\\s*", ", ", Description)]   # Ensure a single space after each comma
 #d3[, Description := gsub("\\s*,", ",", Description)]        # Remove any spaces before a comma
+d2[, Description := gsub("\\s*\\.\\s*", ". ", Description)]       # Remove any spaces before a period
 #d3[, Description := gsub("\\s+$", "", Description)]         # Remove trailing spaces
+
+#write out the dataset file:
+fwrite(d2, file.path("D:/Github/sipex_upload/datasets data","datasets_110925_test.csv"))
+
+#write out the resources file:
+fwrite(d4, file.path("D:/Github/sipex_upload/resources data","resources_110925_test.csv"))
+
 
 
 
