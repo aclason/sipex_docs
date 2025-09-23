@@ -12,8 +12,7 @@ out_dir <- "processed"
 # comma separated for multiple categories
 
 
-#d1 <- fread(file.path(in_dir,"Document Collection and Tagging-140425.csv"))
-d1 <- fread(file.path(in_dir,"collection test.csv"))
+d1 <- fread(file.path(in_dir,"COP_test_160925.csv"))
 
 #d1 <- d1[`Upload to SIPex?` == "Yes - upload to SIPex"]
 #clean colnames:
@@ -22,8 +21,8 @@ colnames(d1)
 #ID
 #d1[, ID := seq(1,nrow(d1))]
 setnames(d1, "doc_id", "ID")
-setnames(d1, "Document", "Title")
-setnames(d1, "Grouping tags","Group")
+#setnames(d1, "Document", "Title")
+#setnames(d1, "Grouping tags","Group")
 setnames(d1, gsub("\n", "", names(d1), fixed = TRUE))  # Replace newlines with spaces
 setnames(d1, gsub("/", "", names(d1), fixed = TRUE))
 setnames(d1, gsub("\r", "", names(d1), fixed = TRUE))
@@ -57,34 +56,28 @@ unique(d1$Organization)
 setcolorder(d1, c("ID","Title", "Organization", 
                   setdiff(names(d1), c("ID", "Title", "Organization"))))
 #seperate to make the resources doc:
-d4 <- d1[,.(ID, Title, `Document Name (title_location_year published)`)]
-
+d4 <- d1[,.(ID, Title, Path)]
+setnames(d4, c("ID","Title","Path"),
+         c("Dataset_ID","Name","Path"))
 
 # JOIN TAGS -----------------
 #checking some tags
 names(d1)
-unique(d1$License)
-unique(d1$`Geographical Area -NATIONAL`)
-
-
 
 #need to make "All" into a column specific "All"
 #d1[, (names(d1)) := lapply(.SD, 
 #                            function(x) gsub("All \\(since this can be applied to any forest in BC\\)",
 #                                            "All", x))]
-cols_to_combine <- names(d1)[!names(d1) %in% c("ID","Title", "Upload to SIPex?", "License",
-                                               "Document Name (title_location_year published)",
+cols_to_combine <- names(d1)[!names(d1) %in% c("ID","Title", "License Type", "Path",
+                                               "Author contact", "Resource Type"
                                                "Organization", "Year Published",
-                                               "Author(s)","Additional organizations",
-                                               "Description", "Descriptive location",
-                                               "Group",
-                                               "DOI", "Name of Journal", #not sure
-                                               "Who has copyright?", #not sure
-                                               "Notes about Copyright")] #not sure
+                                               "Author(s)",
+                                               "Description", "Descriptive location")] #not sure
 d1[, Tags := do.call(paste, c(.SD, sep = ",")), .SDcols = cols_to_combine]
 
-d2 <- d1[,.(ID,Title,Organization, `Author(s)`, Tags,`Descriptive location`,
-            Group, License, Description)]
+d2 <- d1[,.(ID,Title,Organization, `Author(s)`,`Author contact`,
+            `Year Published`, Tags, `Descriptive location`,
+            License, Description)]
 d2[, Tags := gsub(",+", ",", Tags)]  # Replace multiple commas with a single comma
 d2[, Tags := gsub("^,|,$", "", Tags)]
 #Tags don't accept special characters, but accepts dashes, spaces, 
@@ -135,11 +128,13 @@ d2[, Description := gsub("\\s*,\\s*", ", ", Description)]   # Ensure a single sp
 d2[, Description := gsub("\\s*\\.\\s*", ". ", Description)]       # Remove any spaces before a period
 #d3[, Description := gsub("\\s+$", "", Description)]         # Remove trailing spaces
 
+setnames(d2, "Descriptive location", "Descriptive Location")
+
 #write out the dataset file:
-fwrite(d2, file.path("D:/Github/sipex_upload/datasets data","datasets_110925_test.csv"))
+fwrite(d2[2], file.path("../sipex_upload/datasets data","cop_datasets_220925_test.csv"))
 
 #write out the resources file:
-fwrite(d4, file.path("D:/Github/sipex_upload/resources data","resources_110925_test.csv"))
+fwrite(d4[2], file.path("../sipex_upload/resources data","cop_resources_220925_test.csv"))
 
 
 
