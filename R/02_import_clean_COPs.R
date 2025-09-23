@@ -69,7 +69,7 @@ names(d1)
 #                            function(x) gsub("All \\(since this can be applied to any forest in BC\\)",
 #                                            "All", x))]
 cols_to_combine <- names(d1)[!names(d1) %in% c("ID","Title", "License Type", "Path",
-                                               "Author contact", "Resource Type"
+                                               "Author contact",
                                                "Organization", "Year Published",
                                                "Author(s)",
                                                "Description", "Descriptive location")] #not sure
