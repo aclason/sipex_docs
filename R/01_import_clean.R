@@ -35,8 +35,8 @@ names(d1)
 d1$Title
 #Fix parts of the title that are fixable (remove colons, semicolons, periods):
 #Title and Descriptions accept parenthesis, punctuations, apostrophes and hyphens
-special_chars <- unique(unlist(strsplit(paste(d1$Title, collapse = ""), "")))
-special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
+#special_chars <- unique(unlist(strsplit(paste(d1$Title, collapse = ""), "")))
+#special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
 chars_to_remove <- "[:,/?\r–.&*_;]"
 
 d1[, Title := gsub(chars_to_remove, " ", Title)]
@@ -124,7 +124,7 @@ d2[, Tags := gsub(",\\s*$", "", Tags)]
 d2[, Description := gsub("\\(.*?\\)", "", Description)]
 
 #get rid of other special characters
-special_chars <- unique(unlist(strsplit(paste(d3$Description, collapse = ""), "")))
+special_chars <- unique(unlist(strsplit(paste(d2$Description, collapse = ""), "")))
 special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
 chars_to_remove <- "[/&?\"]"
 d2[, Description := gsub(chars_to_remove, "", Description)]
@@ -141,10 +141,10 @@ setnames(d2, c("Descriptive location"),
          c("Descriptive Location"))
 
 #write out the dataset file:
-fwrite(d2[2], file.path("../sipex_upload/datasets data","datasets_250925_test.csv"))
+fwrite(d2, file.path("../sipex_upload/datasets data","datasets_250925_test.csv"))
 
 #write out the resources file:
-fwrite(d4[2], file.path("../sipex_upload/resources data","resources_250925_test.csv"))
+fwrite(d4, file.path("../sipex_upload/resources data","resources_250925_test.csv"))
 
 
 
