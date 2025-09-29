@@ -13,7 +13,7 @@ out_dir <- "processed"
 
 
 #d1 <- fread(file.path(in_dir,"Document Collection and Tagging-140425.csv"))
-d1 <- fread(file.path(in_dir,"collection test.csv"))
+d1 <- fread(file.path(in_dir,"Sept-2025/downloads_250925.csv"))
 
 #d1 <- d1[`Upload to SIPex?` == "Yes - upload to SIPex"]
 #clean colnames:
@@ -23,7 +23,8 @@ colnames(d1)
 #d1[, ID := seq(1,nrow(d1))]
 setnames(d1, "doc_id", "ID")
 setnames(d1, "Document", "Title")
-setnames(d1, "Grouping tags","Group")
+setnames(d1, "Featured Topic Tag","Group")
+setnames(d1, "License Type", "License")
 setnames(d1, gsub("\n", "", names(d1), fixed = TRUE))  # Replace newlines with spaces
 setnames(d1, gsub("/", "", names(d1), fixed = TRUE))
 setnames(d1, gsub("\r", "", names(d1), fixed = TRUE))
@@ -136,13 +137,14 @@ d2[, Description := gsub("\\s*,\\s*", ", ", Description)]   # Ensure a single sp
 d2[, Description := gsub("\\s*\\.\\s*", ". ", Description)]       # Remove any spaces before a period
 #d3[, Description := gsub("\\s+$", "", Description)]         # Remove trailing spaces
 
-setnames(d2, "Descriptive location", "Descriptive Location")
+setnames(d2, c("Descriptive location"), 
+         c("Descriptive Location"))
 
 #write out the dataset file:
-fwrite(d2, file.path("../sipex_upload/datasets data","datasets_110925_test.csv"))
+fwrite(d2[2], file.path("../sipex_upload/datasets data","datasets_250925_test.csv"))
 
 #write out the resources file:
-fwrite(d4, file.path("../sipex_upload/resources data","resources_110925_test.csv"))
+fwrite(d4[2], file.path("../sipex_upload/resources data","resources_250925_test.csv"))
 
 
 

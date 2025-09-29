@@ -12,7 +12,7 @@ out_dir <- "processed"
 # comma separated for multiple categories
 
 
-d1 <- fread(file.path(in_dir,"COP_test_160925.csv"))
+d1 <- fread(file.path(in_dir,"COP_v3_cleaned_160925.csv"))
 
 #d1 <- d1[`Upload to SIPex?` == "Yes - upload to SIPex"]
 #clean colnames:
@@ -115,7 +115,7 @@ d2[, Tags := gsub(",\\s*$", "", Tags)]
 d2[, Description := gsub("\\(.*?\\)", "", Description)]
 
 #get rid of other special characters
-special_chars <- unique(unlist(strsplit(paste(d3$Description, collapse = ""), "")))
+special_chars <- unique(unlist(strsplit(paste(d2$Description, collapse = ""), "")))
 special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
 chars_to_remove <- "[/&?\"]"
 d2[, Description := gsub(chars_to_remove, "", Description)]
@@ -128,13 +128,14 @@ d2[, Description := gsub("\\s*,\\s*", ", ", Description)]   # Ensure a single sp
 d2[, Description := gsub("\\s*\\.\\s*", ". ", Description)]       # Remove any spaces before a period
 #d3[, Description := gsub("\\s+$", "", Description)]         # Remove trailing spaces
 
-setnames(d2, "Descriptive location", "Descriptive Location")
+setnames(d2, c("Descriptive location", "Author contact"), 
+         c("Descriptive Location", "Author Contact"))
 
 #write out the dataset file:
-fwrite(d2[2], file.path("../sipex_upload/datasets data","cop_datasets_220925_test.csv"))
+fwrite(d2[38], file.path("../sipex_upload/datasets data","cop_datasets_220925_test.csv"))
 
 #write out the resources file:
-fwrite(d4[2], file.path("../sipex_upload/resources data","cop_resources_220925_test.csv"))
+fwrite(d4[38], file.path("../sipex_upload/resources data","cop_resources_220925_test.csv"))
 
 
 
