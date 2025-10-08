@@ -11,9 +11,15 @@ out_dir <- "processed"
 #of the categories
 # comma separated for multiple categories
 
+# data associated with LTR
+# batch uploads at the end of Septemeber:
+d1 <- fread(file.path(in_dir,"cleaned/downloads_250925.csv"))
+# update to include additional training entries:
+d1 <- fread(file.path(in_dir,"cleaned/downloads_061025.csv"))
 
-#d1 <- fread(file.path(in_dir,"Document Collection and Tagging-140425.csv"))
-d1 <- fread(file.path(in_dir,"Sept-2025/downloads_250925.csv"))
+# update to include more from C3:
+d1 <- fread(file.path(in_dir,"cleaned/downloads_071025.csv"))
+
 
 #d1 <- d1[`Upload to SIPex?` == "Yes - upload to SIPex"]
 #clean colnames:
@@ -35,9 +41,9 @@ names(d1)
 d1$Title
 #Fix parts of the title that are fixable (remove colons, semicolons, periods):
 #Title and Descriptions accept parenthesis, punctuations, apostrophes and hyphens
-#special_chars <- unique(unlist(strsplit(paste(d1$Title, collapse = ""), "")))
-#special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
-chars_to_remove <- "[:,/?\r–.&*_;]"
+special_chars <- unique(unlist(strsplit(paste(d1$Title, collapse = ""), "")))
+special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
+chars_to_remove <- "[:,/?\r–&*_;]"
 
 d1[, Title := gsub(chars_to_remove, " ", Title)]
 d1[, Title := gsub("\\s+", " ", trimws(Title))]
@@ -77,9 +83,10 @@ unique(d1$`Geographical Area -NATIONAL`)
 cols_to_combine <- names(d1)[!names(d1) %in% c("ID","Title", "Upload to SIPex?", "License",
                                                "Document Name (title_location_year published)",
                                                "Organization", "Year Published",
-                                               "Author(s)","Additional organizations",
+                                               "Author(s)", "Author contact",
+                                               "Additional organizations",
                                                "Description", "Descriptive location",
-                                               "Group",
+                                               "Group", "Engagement Type",
                                                "DOI", "Name of Journal", #not sure
                                                "Who has copyright?", #not sure
                                                "Notes about Copyright")] #not sure
@@ -140,13 +147,69 @@ d2[, Description := gsub("\\s*\\.\\s*", ". ", Description)]       # Remove any s
 setnames(d2, c("Descriptive location"), 
          c("Descriptive Location"))
 
+#cleaning authors names: ----------------------
+unique(unlist(strsplit(d2$`Author(s)`, ",")))
+d2[, `Author(s)` := gsub("([A-Z])\\.\\s+([A-Z])\\.", "\\1.\\2.", `Author(s)`)]   # collapse initials
+d2[, `Author(s)` := gsub("([A-Z])\\.\\s+([A-Z])\\.", "\\1.\\2.", `Author(s)`)]   # collapse initials (third initial)
+d2[, `Author(s)` := gsub("[\n\r]+", " ", `Author(s)`)]                           # remove newlines
+d2[, `Author(s)` := gsub("\\.$", "", `Author(s)`)]                               # strip trailing periods
+d2[, `Author(s)` := gsub("’", "'", `Author(s)`)]                                 # curly to straight apostrophe
+d2[, `Author(s)` := gsub("O’", "O'", `Author(s)`)]                               # fix O’Neill
+d2[, `Author(s)` := trimws(`Author(s)`)]
+d2[, `Author(s)` := trimws(`Author(s)`)] 
+sort(unique(trimws(unlist(strsplit(d2$`Author(s)`, ",")))))
+
+
+#check tags ---------------------
+sort(unique(trimws(unlist(strsplit(d2$Tags, ",")))))
+
+
+#check descriptive location --------------------
+sort(unique(trimws(unlist(strsplit(d2$`Descriptive Location`, ",")))))
+
+
+#check groups --------------------
+sort(unique(trimws(unlist(strsplit(d2$Group, ",")))))
+d2[Group == "fire-prescribed-fire", .(ID, Title)]
+
+
+#check organization --------------------
+sort(unique(trimws(unlist(strsplit(d2$Organization, ",")))))
+d2[, Organization := gsub("[\n\r]+", " ", Organization)]                           # remove newlines
+d2[, Organization := gsub("\\.$", "", Organization)]                               # strip trailing periods
+d2[, Organization := gsub("’", "'", Organization)]                                 # curly to straight apostrophe
+d2[, Organization := gsub('^"+|"+$', '', Organization)]
+d2[, Organization := trimws(Organization)]
+sort(unique(trimws(unlist(d2$Organization))))
+
+
+d2$Title
+d2$License
+
+
 #write out the dataset file:
-fwrite(d2, file.path("../sipex_upload/datasets data","datasets_250925_test.csv"))
+fwrite(d2[3:9], file.path("../sipex_upload/datasets data","datasets_071025_1.csv"))
 
 #write out the resources file:
-fwrite(d4, file.path("../sipex_upload/resources data","resources_250925_test.csv"))
+fwrite(d4[3:9], file.path("../sipex_upload/resources data","resources_071025_1.csv"))
 
+# write out the ones that failed to upload:
+#write out the dataset file:
+fwrite(d2[ID %in% c("C2-005", "C3-084", "C3-091", "C3-093", "C3-096", "C3-099", 
+                    "C3-100", "C3-101", "C3-105", "C3-106", "C3-107", "C3-108", 
+                    "C3-109", "C5-003", "T1-002", "T1-003", "T1-004", "T1-005", 
+                    "T1-012", "T1-013", "T1-014", "T1-015", "T1-017", "T1-018", 
+                    "COP1-002", "COP1-003", "COP1-004", "COP1-005", "COP1-029", 
+                    "COP1-036", "COP1-050")], 
+       file.path("../sipex_upload/datasets data","datasets_250925_f.csv"))
 
-
+#write out the resources file:
+fwrite(d4[Dataset_ID %in% c("C2-005", "C3-084", "C3-091", "C3-093", "C3-096", "C3-099", 
+                    "C3-100", "C3-101", "C3-105", "C3-106", "C3-107", "C3-108", 
+                    "C3-109", "C5-003", "T1-002", "T1-003", "T1-004", "T1-005", 
+                    "T1-012", "T1-013", "T1-014", "T1-015", "T1-017", "T1-018", 
+                    "COP1-002", "COP1-003", "COP1-004", "COP1-005", "COP1-029", 
+                    "COP1-036", "COP1-050")], 
+       file.path("../sipex_upload/resources data","resources_250925_f.csv"))
 
 
