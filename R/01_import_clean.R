@@ -12,15 +12,27 @@ out_dir <- "../sipex_upload"
 #of the categories
 # comma separated for multiple categories
 
-# data associated with LTR
-# batch uploads at the end of Septemeber:
-d1 <- fread(file.path(in_dir,"downloads_250925.csv"))
-# update to include additional training entries:
-d1 <- fread(file.path(in_dir,"downloads_061025.csv"))
+#d1 <- fread(file.path(in_dir,"downloads_012626.csv"))
+d1 <- fread(file.path(in_dir,"downloads_080426.csv"))
 
-# update to include more from C3:
-d1 <- fread(file.path(in_dir,"downloads_071025.csv"))
+# read in the docs to upload:
+#uploads <- fread(file.path(in_dir,"02_Collection Master List - ALL.csv"))
+uploads <- fread(file.path(in_dir,"02_Collection Master List - ALL - coll6.csv"))
+#AC: If you don't want to, you don't need to use the uploads doc. For small
+# batches, I don't think you necessarily need it
 
+
+setnames(uploads, c("doc_id", "Document or Training Material",
+                    "Document File Name\n \n(title_location_year published)"),
+                    c("ID","Title", "Path"))
+uploads <- uploads[,.(ID, upload_now, Title, `Uploaded to SIPex?`)]
+
+upload_now <- uploads[upload_now == "Yes"]
+special_chars <- unique(unlist(strsplit(paste(upload_now$Title, collapse = ""), "")))
+special_chars <- special_chars[grepl("[^[:alnum:]\\s]", special_chars)]
+chars_to_remove <- "[:,/?\r–&*_;]"
+upload_now[, Title := gsub(chars_to_remove, " ", Title)]
+upload_now[, Title := gsub("\\s+", " ", trimws(Title))]
 
 #d1 <- d1[`Upload to SIPex?` == "Yes - upload to SIPex"]
 #clean colnames:
@@ -93,6 +105,15 @@ setcolorder(d1, c("ID","Title", "Organization",
 d4 <- d1[,.(ID, Title, `Document Name (title_location_year published)`)]
 setnames(d4, c("ID","Title","Document Name (title_location_year published)"),
          c("Dataset_ID","Name","Path"))
+d4[, Path := gsub("[\n\r]+", " ", Path)]
+d4[, Path := {
+  p <- trimws(Path)
+  ifelse(
+    grepl("^https", p, ignore.case = TRUE) | grepl("\\.pdf$", p, ignore.case = TRUE),
+    p,
+    paste0(p, ".pdf")
+  )
+}]
 #might need to get rid of parentheses in Organization - not sure yet
 #now pull out groups and add to a new column:
 
@@ -144,7 +165,7 @@ d2[, Tags := gsub(",\\s*$", "", Tags)]
 
 #check tags ---------------------
 sort(unique(trimws(unlist(strsplit(d2$Tags, ",")))))
-d2[d2[, grepl("Caribou", Tags, ignore.case = TRUE)]]
+d2[d2[, grepl("Balsam", Tags, ignore.case = TRUE)],.(Tags)]
 
 #Description ----------------------------
 d2[, Description := gsub("\\(.*?\\)", "", Description)]
@@ -158,9 +179,9 @@ d2[, Description := gsub("\\s*\\.\\s*", ". ", Description)]       # Remove any s
 
 
 #Descriptive location --------------------
-sort(unique(trimws(unlist(strsplit(d2$`Descriptive location`, ",")))))
-setnames(d2, c("Descriptive location"), 
-         c("Descriptive Location"))
+sort(unique(trimws(unlist(strsplit(d2$`Descriptive Location`, ",")))))
+#setnames(d2, c("Descriptive location"), 
+ #        c("Descriptive Location"))
 
 #cleaning authors names: ----------------------
 sort(unique(trimws(unlist(strsplit(d2$`Author(s)`, ",")))))
@@ -180,8 +201,8 @@ sort(unique(trimws(unlist(strsplit(d2$`Descriptive Location`, ",")))))
 
 
 #check groups --------------------
-#sort(unique(trimws(unlist(strsplit(d2$Group, ",")))))
-#d2[Group == "fire-prescribed-fire", .(ID, Title)]
+sort(unique(trimws(unlist(strsplit(d2$Group, ",")))))
+d2[Group == "fire-interactions-values", .(ID, Title)]
 
 
 #check organization --------------------
@@ -193,16 +214,35 @@ d2[, Organization := gsub('^"+|"+$', '', Organization)]
 d2[, Organization := trimws(Organization)]
 sort(unique(trimws(unlist(d2$Organization))))
 
+d2[Organization == "Society for Ecological Restoration (SER) BC Chapter", .(ID, Title)]
 
 d2$Title
 d2$License
 
 
+## -----------------------------------------------------------------------------
+sort(upload_now$ID)
+sort(d2$ID)
+
+d2_to_upload <- merge(d2, upload_now[upload_now == "Yes", 
+                                   .(ID, upload_now)], by = "ID")
+
+d4_to_upload <- merge(d4, upload_now[upload_now == "Yes", 
+                                  .(ID, upload_now)],
+                      by.x = "Dataset_ID",
+                      by.y = "ID")
+d2_to_upload[, upload_now := NULL]
+d4_to_upload[, upload_now := NULL]
+
 #write out the dataset file:
-fwrite(d2[22], file.path(out_dir,"datasets data","datasets_071025_1.csv"))
+fwrite(d2_to_upload[21:31], file.path(out_dir,"datasets data","datasets_190126.csv"))
 
 #write out the resources file:
-fwrite(d4[22], file.path(out_dir,"resources data","resources_071025_1.csv"))
+fwrite(d4_to_upload[21:31], file.path(out_dir,"resources data","resources_190126.csv"))
+
+
+
+
 
 # write out the ones that failed to upload:
 #write out the dataset file:
